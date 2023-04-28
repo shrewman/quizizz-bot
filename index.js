@@ -16,15 +16,27 @@ const getAnswers = async (roomCode) => {
     const inputSelector = 'input[type="text"][placeholder="Pin or Link"]';
     await page.type(inputSelector, roomCode);
 
+    console.log('done');
+
     const buttonSelector = 'button[type="button"].bg-blue-500';
     await page.waitForSelector(buttonSelector);
     await page.click(buttonSelector);
 
     await page.waitForSelector('div.rounded-xl');
+    console.log('done2');
 
-    return await page.evaluate(() => {
+    return await page.evaluate(async () => {
         const cards = document.querySelectorAll('div.rounded-xl');
 
+        let map = new Map();
+        for (let card of cards) {
+            const question = card.querySelector('div.rounded-xl h5').innerText;
+            const answer = card.querySelector('div.rounded-xl div').innerText;
+            console.log(question + " " + answer);
+            map.set(question, answer);
+        }
+
+        console.log(map);
         return Array.from(cards).map((card) => {
             const question = card.querySelector('div.rounded-xl h5').innerText;
             const answer = card.querySelector('div.rounded-xl div').innerText;
@@ -64,8 +76,30 @@ const startQuizziz = async (name, roomCode, answers) => {
             console.log(text);
             return text ? text : '';
         });
-        // TODO: Map(question, answer) => answer
-        console.log(question);
+        const card = await answers.find(card => card.question === question);
+        const answer =  await card ? card.answer : null;
+        await console.log(question);
+        await console.log(answer);
+
+        // TODO: {
+        const powerupSelector = 'powerup-award-container';
+        const leaderboardWrapper = 'leaderboard-wrapper';
+        const transitionerContainer = 'transitioner-container';
+        const optionGrid = 'options-grid'
+        const option1 = 'options-1'
+        const option2 = 'options-2'
+        const option3 = 'options-3'
+        const option4 = 'options-4'
+        const scorebarContainer = 'scorebar-container';
+        const screenRedemption = 'screen-redemption-question-selector';
+        const redemptionButtonChoice = 'gradient-container';
+        const endScreen = 'accuracy-info-section';
+
+        const shouldPowerup = 'apply-now';
+        const continueButton = 'right-navigator';
+        const submitAnswerButton = 'submit-button';
+        // TODO: }
+
     }
 };
 

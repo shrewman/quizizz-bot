@@ -38,4 +38,4 @@ Solve your tests on quizziz with ease.
 
 ## Usage
 
-...........
+Follow instructions after launching app

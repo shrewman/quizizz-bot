@@ -15,6 +15,7 @@ const toSummarySelector = '.skip-summary';
 const gameOverSelector = '.screen-game-over';
 const accuracyInfoSelector = '.accuracy-info-section';
 
+
 const browser = await puppeteer.launch({
     headless: false,
     defaultViewport:
@@ -33,7 +34,8 @@ const getAnswersFromQuizit = async (roomCode) => {
     const page = await browser.newPage();
     await page.goto('https://quizit.online/services/quizizz/');
 
-    await page.type(quizitInputSelector, 'https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start');
+    // await page.type(quizitInputSelector, 'https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start');
+    await page.type(quizitInputSelector, roomCode);
     await page.click(quizitGetAnswersButton);
 
     await page.waitForSelector(quizitCardSelector);
@@ -115,7 +117,7 @@ async function handleRedemptionQuestions(page) {
     }
 }
 
-async function pickAnswer(page, answer) {
+async function clickOnCorrectAnswers(page, answer) {
     const options = await page.$$('div.option');
     for (let i = 0; i < options.length; i++) {
         const optionText = await options[i].$eval('div.resizeable p', el => el.innerText);
@@ -127,10 +129,26 @@ async function pickAnswer(page, answer) {
     if (button) await button.click();
 }
 
+async function extractQuestionFrom(page) {
+    return await page.evaluate(() => {
+        const text = document.querySelector('#questionText p').innerText;
+        return text ? text : '';
+    });
+}
+
+async function getAnswerOn(question, answers) {
+    const card = await answers.find(card => card.question === question);
+
+    let answer = await card ? card.answer : null;
+    await console.log(question);
+    console.log(answer);
+    return answer;
+}
+
 const initQuizziz = async (name, roomCode, answers) => {
     const page = await browser.newPage();
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
-    await page.goto(`https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start`);
+    // await page.goto(`https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start`);
 
     await configureQuizziz(page, name);
     // await inputName(page, name);
@@ -138,40 +156,25 @@ const initQuizziz = async (name, roomCode, answers) => {
 
     while(true) {
 
-        if(await page.$(gameOverSelector)) {
-            console.log('done game over')
-            break;
-        }
-
         if (await page.$(levelFeedbackSelector)) {
             const toSummary = await page.$(toSummarySelector);
             if (toSummary) await toSummary.click();
-            console.log('done to summary')
+            console.log('skipped level feedback')
             break;
         }
 
         if(await page.$(accuracyInfoSelector)) {
-            console.log('done accuracy info')
+            console.log('quiz done!')
             break;
         }
 
         const questionSelector = '#questionText p';
-        let question, answer;
 
         if (await page.$(questionSelector)) {
-            question = await page.evaluate(() => {
-                const text = document.querySelector('#questionText p').innerText;
-                return text ? text : '';
-            });
-            const card = await answers.find(card => card.question === question);
-            answer =  await card ? card.answer : null;
-
-            await console.log(question);
-            console.log(answer);
-
-            await pickAnswer(page, answer);
+            let question = await extractQuestionFrom(page);
+            let answer = await getAnswerOn(question, answers);
+            await clickOnCorrectAnswers(page, answer);
         }
-
 
         await handleAnnoyingPopups(page);
         await handleRedemptionQuestions(page);

@@ -120,33 +120,6 @@ async function handleRedemptionQuestions(page) {
     }
 }
 
-async function clickOnCorrectAnswers(page, answer) {
-    let found = false;
-    const options = await page.$$('div.option');
-
-    for (let i = 0; i < options.length; i++) {
-        const option = options[i];
-        const text = await option.$eval('.resizeable', el => el.textContent);
-
-        if (text.includes(answer)) {
-            await option.click();
-            found = true;
-        }
-    }
-
-    // TODO: support for duplicate questions
-    if(!found) {
-        console.log('No answer found, maybe because of duplicate question in quiz. Not yet supported');
-        console.log('Choosing random...');
-        const index = Math.floor(Math.random() * options.length);
-        await options[index].click();
-        console.log(`Clicked on ${index + 1} card`);
-    }
-
-    const button = await page.$(submitAnswerButton);
-    if (button) await button.click();
-}
-
 async function extractTextFromElement(page, selector) {
     const element = await page.$(selector);
     if (!element) return '';
@@ -161,17 +134,41 @@ async function extractTextFromElement(page, selector) {
     return text;
 }
 
-async function extractQuestionFrom(page) {
-    const question = await extractTextFromElement(page, questionSelector);
-    return question.trim();
+async function clickOnCorrectAnswer(page, options, answers) {
+    const question = (await extractTextFromElement(page, questionSelector)).trim();
+    let found = false;
+    let index = 0;
+
+    while (!found) {
+        let array = answers.slice(-index);
+        index = array.findIndex(card => card.question === question);
+
+        if (index === -1) {
+            console.log('No answers found! Picking randomly');
+            const r = Math.floor(Math.random() * options.length);
+            await options[r].click();
+            console.log(`Clicked on ${r + 1} card`);
+            break;
+        }
+
+        const card = array.find((card, i) => i === index);
+
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const text = await option.$eval('.resizeable', el => el.textContent);
+
+            if (card.answer.includes(text)) {
+                await option.click();
+                console.log(card.question + '\n' + card.answer);
+                found = true;
+            }
+        }
+    }
+    const button = await page.$(submitAnswerButton);
+    if (button) await button.click();
 }
 
-async function getAnswerOn(question, answers) {
-    const card = await answers.find(card => card.question.trim() === question);
-    return await card ? card.answer : null;
-}
-
-const initQuizziz = async (name, roomCode, answers) => {
+const initQuizzizBot = async (name, roomCode, answers) => {
     const page = await browser.newPage();
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
     // await page.goto(`https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start`);
@@ -199,11 +196,8 @@ const initQuizziz = async (name, roomCode, answers) => {
         }
 
         if (await page.$(questionSelector)) {
-            let question = await extractQuestionFrom(page);
-            let answer = await getAnswerOn(question, answers);
-            console.log(question);
-            console.log(answer);
-            await clickOnCorrectAnswers(page, answer);
+            const options = await page.$$('div.option');
+            await clickOnCorrectAnswer(page, options, answers);
         }
 
         await handleAnnoyingPopups(page);
@@ -217,7 +211,7 @@ let roomCode = '21153327';
 let name = '**';
 let answers = await getAnswersFromQuizit(roomCode);
 console.log(answers);
-await initQuizziz(name, roomCode, answers);
+await initQuizzizBot(name, roomCode, answers);
 
 
 

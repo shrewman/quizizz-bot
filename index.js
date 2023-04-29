@@ -1,27 +1,27 @@
 import puppeteer from "puppeteer";
 
 // TODO: {
-const powerupSelector = 'powerup-award-container';
-const leaderboardWrapper = 'leaderboard-wrapper';
-const transitionerContainer = 'transitioner-container';
-const optionGrid = 'options-grid'
-const option1 = 'options-1'
-const option2 = 'options-2'
-const option3 = 'options-3'
-const option4 = 'options-4'
-const scorebarContainer = 'scorebar-container';
-const screenRedemption = 'screen-redemption-question-selector';
-const redemptionButtonChoice = 'gradient-container';
+const powerupSelector = '.powerup-award-container';
+const leaderboardWrapper = '.leaderboard-wrapper';
+const transitionerContainer = '.transitioner-container';
+const optionGrid = '.options-grid'
+const option1 = '.options-1'
+const option2 = '.options-2'
+const option3 = '.options-3'
+const option4 = '.options-4'
+const scorebarContainer = '.scorebar-container';
+const screenRedemption = '.screen-redemption-question-selector';
+const redemptionButtonChoice = '.gradient-container';
 
-const gameOverSelector = 'screen-game-over';
-const firstLevelFeedback = 'first-level-feedback';
-const accuracyInfoSection = 'accuracy-info-section';
-const toSummarySelector = 'skip-summary';
-const screenSummarySelector = 'screen-summary';
+const gameOverSelector = '.screen-game-over';
+const firstLevelFeedback = '.first-level-feedback';
+const accuracyInfoSection = '.accuracy-info-section';
+const toSummarySelector = '.skip-summary';
+const screenSummarySelector = '.screen-summary';
 
-const shouldPowerup = 'apply-now';
-const continueButton = 'right-navigator';
-const submitAnswerButton = 'submit-button';
+const shouldPowerup = '.apply-now';
+const continueButton = '.right-navigator';
+const submitAnswerButton = '.submit-button';
 // TODO: }
 
 const browser = await puppeteer.launch({
@@ -40,7 +40,6 @@ const getAnswers = async (roomCode) => {
     const inputSelector = 'input[type="text"][placeholder="Pin or Link"]';
     // await page.type(inputSelector, roomCode);
     await page.type(inputSelector, 'https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start');
-
 
     const buttonSelector = 'button[type="button"].bg-blue-500';
     await page.waitForSelector(buttonSelector);
@@ -95,27 +94,25 @@ const startQuizziz = async (name, roomCode, answers) => {
 
     while(true) {
         const questionSelector = '#questionText p';
-
-        await Promise.race([
-            page.waitForSelector(questionSelector, { timeout: 0 }),
-            page.waitForSelector(powerupSelector, { timeout: 0 }),
-            page.waitForSelector(leaderboardWrapper, { timeout: 0 }),
-            page.waitForSelector(gameOverSelector, { timeout: 0 }),
-            page.waitForSelector(screenSummarySelector, { timeout: 0 }),
-            page.waitForSelector(firstLevelFeedback, { timeout: 0 }),
-        ]);
+        let question, answer;
 
         if(await page.$(gameOverSelector)) {
-            console.log('done')
+            console.log('done game over')
+            break;
+        }
+
+        if (await page.$(toSummarySelector)) {
+            const toSummary = await page.$(toSummarySelector);
+            if (toSummary) await toSummary.click();
+            console.log('done to summary')
             break;
         }
 
         if(await page.$(accuracyInfoSection)) {
-            console.log('done')
+            console.log('done accuracy info')
             break;
         }
 
-        let question, answer;
         if (await page.$(questionSelector)) {
             question = await page.evaluate(() => {
                 const text = document.querySelector('#questionText p').innerText;
@@ -123,38 +120,48 @@ const startQuizziz = async (name, roomCode, answers) => {
             });
             const card = await answers.find(card => card.question === question);
             answer =  await card ? card.answer : null;
-        }
 
-        await console.log(question);
-        let multipleAnswers = answer.split('\n').filter(str => str !== '');
-        console.log(multipleAnswers);
+            await console.log(question);
+            let multipleAnswers = answer.split('\n').filter(str => str !== '');
+            console.log(multipleAnswers);
 
-        const options = await page.$$('div.option');
-        for (let i = 0; i < options.length; i++) {
-            const optionText = await options[i].$eval('div.resizeable p', el => el.innerText);
-            if ( multipleAnswers.includes(optionText) ) {
-                await options[i].click();
+            const options = await page.$$('div.option');
+            for (let i = 0; i < options.length; i++) {
+                const optionText = await options[i].$eval('div.resizeable p', el => el.innerText);
+                if ( multipleAnswers.includes(optionText) ) {
+                    await options[i].click();
+                }
             }
+
+            const submitButton = await page.$('.submit-button');
+            if (submitButton) await submitButton.click();
         }
-
-        const submitButton = await page.$('.submit-button');
-        if (submitButton) await submitButton.click();
-
-        const usePowerUp = await page.$(shouldPowerup);
-        if (usePowerUp) await submitButton.click();
 
         if (await page.$(leaderboardWrapper)) {
             const button = await page.$(continueButton);
             if (button) {
                 await button.click();
             }
+            console.log('leaderboard skipped');
         }
-        await new Promise(resolve => setTimeout(resolve, 3000));
-    }
 
-    if (await page.$(toSummarySelector)) {
-        const button = await page.$(toSummarySelector);
-        if (button) await button.click();
+        if (await page.$(powerupSelector)) {
+            const button = await page.$(continueButton);
+            if (button) {
+                await button.click();
+            }
+            console.log('powerup gaining skipped');
+        }
+
+        if (await page.$(shouldPowerup)) {
+            const button = await page.$(shouldPowerup);
+            if (button) {
+                await button.click();
+            }
+            console.log('annoying powerup used');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
 };

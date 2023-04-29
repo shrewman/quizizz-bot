@@ -16,6 +16,8 @@ const gameOverSelector = '.screen-game-over';
 const accuracyInfoSelector = '.accuracy-info-section';
 
 
+const questionSelector = '#questionText';
+
 const browser = await puppeteer.launch({
     headless: false,
     defaultViewport:
@@ -39,6 +41,7 @@ const getAnswersFromQuizit = async (roomCode) => {
     await page.click(quizitGetAnswersButton);
 
     await page.waitForSelector(quizitCardSelector);
+
     return await extractAnswers(page);
 };
 
@@ -47,7 +50,7 @@ async function extractAnswers(page) {
         const cards = document.querySelectorAll('div.rounded-xl');
 
         return Array.from(cards).map((card) => {
-            const question = card.querySelector('div.rounded-xl h5').innerText;
+            const question = card.querySelector('div.rounded-xl h5').innerText.trim();
             const answer = card.querySelector('div.rounded-xl div')
                 .innerText.split('\n').filter(str => str !== '');
             return { question, answer };
@@ -118,31 +121,54 @@ async function handleRedemptionQuestions(page) {
 }
 
 async function clickOnCorrectAnswers(page, answer) {
+    let found = false;
     const options = await page.$$('div.option');
+
     for (let i = 0; i < options.length; i++) {
-        const optionText = await options[i].$eval('div.resizeable p', el => el.innerText);
-        if (answer.includes(optionText)) {
-            await options[i].click();
+        const option = options[i];
+        const text = await option.$eval('.resizeable', el => el.textContent);
+
+        if (text.includes(answer)) {
+            await option.click();
+            found = true;
         }
     }
+
+    // TODO: support for duplicate questions
+    if(!found) {
+        console.log('No answer found, maybe because of duplicate question in quiz. Not yet supported');
+        console.log('Choosing random...');
+        const index = Math.floor(Math.random() * options.length);
+        await options[index].click();
+        console.log(`Clicked on ${index + 1} card`);
+    }
+
     const button = await page.$(submitAnswerButton);
     if (button) await button.click();
 }
 
+async function extractTextFromElement(page, selector) {
+    const element = await page.$(selector);
+    if (!element) return '';
+
+    let text = await page.evaluate(el => el.innerText.trim(), element);
+    const children = await page.$$(selector + ' > *');
+    const childTexts = await Promise.all(children.map(child => extractTextFromElement(page, selector + ' > ' + child.tagName)));
+
+    // Удаляет пробел, если встречается 2+ подряд
+    text = text + childTexts.join('').trim();
+    text = text.replace(/\s{2,}/g, ' ').trim();
+    return text;
+}
+
 async function extractQuestionFrom(page) {
-    return await page.evaluate(() => {
-        const text = document.querySelector('#questionText p').innerText;
-        return text ? text : '';
-    });
+    const question = await extractTextFromElement(page, questionSelector);
+    return question.trim();
 }
 
 async function getAnswerOn(question, answers) {
-    const card = await answers.find(card => card.question === question);
-
-    let answer = await card ? card.answer : null;
-    await console.log(question);
-    console.log(answer);
-    return answer;
+    const card = await answers.find(card => card.question.trim() === question);
+    return await card ? card.answer : null;
 }
 
 const initQuizziz = async (name, roomCode, answers) => {
@@ -151,8 +177,12 @@ const initQuizziz = async (name, roomCode, answers) => {
     // await page.goto(`https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start`);
 
     await configureQuizziz(page, name);
-    // await inputName(page, name);
-    // await startGame(page);
+    await inputName(page, name);
+    await startGame(page);
+
+    console.log('========initQuiz========');
+    console.log(answers);
+    console.log('=================');
 
     while(true) {
 
@@ -168,20 +198,18 @@ const initQuizziz = async (name, roomCode, answers) => {
             break;
         }
 
-        const questionSelector = '#questionText p';
-
         if (await page.$(questionSelector)) {
             let question = await extractQuestionFrom(page);
             let answer = await getAnswerOn(question, answers);
+            console.log(question);
+            console.log(answer);
             await clickOnCorrectAnswers(page, answer);
         }
 
         await handleAnnoyingPopups(page);
         await handleRedemptionQuestions(page);
-
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        await new Promise(resolve => setTimeout(resolve, 1500));
     }
-
 };
 
 

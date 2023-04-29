@@ -7,12 +7,12 @@
 
 ## Description
 
-Solve your tests on quizziz with ease.
+Solve your tests on quizziz with ease using Quizziz Bot. It's a Node.js application that automates solving Quizziz tests. Built using the Puppeteer library, it is capable of extracting answers from [Quizit](quizit.online), and answering questions alongside with skipping all anoying dialogs to do work faster.
 
 ## Installation
 
 1. Install Node.js on your computer if you haven't already. You can download it from the official website: https://nodejs.org/
-2. Clone my repository by downloading zip archive or using cli:
+2. Clone the repository:
 
     ```
     git clone https://github.com/feelswhiteman/quizziz-bot
@@ -24,10 +24,10 @@ Solve your tests on quizziz with ease.
     cd quizziz-bot
     ```
     
-4. Install puppeteer dependecy:
+4. Install dependecies:
 
     ```
-    npm install puppeteer
+    npm install
     ```
     
 5. Run the project using this command:

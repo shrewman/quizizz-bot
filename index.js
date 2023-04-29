@@ -12,7 +12,6 @@ const redemptionQuestionButton = '.gradient-container';
 
 const levelFeedbackSelector = '.first-level-feedback';
 const toSummarySelector = '.skip-summary';
-const gameOverSelector = '.screen-game-over';
 const accuracyInfoSelector = '.accuracy-info-section';
 
 
@@ -36,7 +35,6 @@ const getAnswersFromQuizit = async (roomCode) => {
     const page = await browser.newPage();
     await page.goto('https://quizit.online/services/quizizz/');
 
-    // await page.type(quizitInputSelector, 'https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start');
     await page.type(quizitInputSelector, roomCode);
     await page.click(quizitGetAnswersButton);
 
@@ -63,7 +61,7 @@ async function inputName(page, name) {
     await page.type('.enter-name-field', name);
 }
 
-async function configureQuizziz(page, name) {
+async function configureQuizziz(page) {
     await page.waitForSelector('.toggle-button');
     await page.evaluate(() => {
         const buttons = document.querySelector('.game-settings-list')
@@ -171,15 +169,12 @@ async function clickOnCorrectAnswer(page, options, answers) {
 const initQuizzizBot = async (name, roomCode, answers) => {
     const page = await browser.newPage();
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
-    // await page.goto(`https://quizizz.com/join/quiz/5e23a5fd4b061d001b80b842/start`);
 
     await configureQuizziz(page, name);
     await inputName(page, name);
     await startGame(page);
 
-    console.log('========initQuiz========');
     console.log(answers);
-    console.log('=================');
 
     while(true) {
 
@@ -206,12 +201,8 @@ const initQuizzizBot = async (name, roomCode, answers) => {
     }
 };
 
-
 let roomCode = '21153327';
 let name = '**';
 let answers = await getAnswersFromQuizit(roomCode);
 console.log(answers);
 await initQuizzizBot(name, roomCode, answers);
-
-
-

@@ -1,8 +1,5 @@
 # quizziz-bot
 
-## Table of Contents
-
-- [Project Title](#quizziz-bit)
 - [Description](#description)
 - [Installation](#installation)
 - [Usage](#usage)

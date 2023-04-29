@@ -1,27 +1,23 @@
 import puppeteer from "puppeteer";
 
 // TODO: {
-const powerupSelector = '.powerup-award-container';
 const leaderboardWrapper = '.leaderboard-wrapper';
-const transitionerContainer = '.transitioner-container';
-const optionGrid = '.options-grid'
-const option1 = '.options-1'
-const option2 = '.options-2'
-const option3 = '.options-3'
-const option4 = '.options-4'
-const scorebarContainer = '.scorebar-container';
-const screenRedemption = '.screen-redemption-question-selector';
-const redemptionButtonChoice = '.gradient-container';
-
-const gameOverSelector = '.screen-game-over';
-const firstLevelFeedback = '.first-level-feedback';
-const accuracyInfoSection = '.accuracy-info-section';
-const toSummarySelector = '.skip-summary';
-const screenSummarySelector = '.screen-summary';
-
+const powerupSelector = '.powerup-award-container';
 const shouldPowerup = '.apply-now';
 const continueButton = '.right-navigator';
 const submitAnswerButton = '.submit-button';
+
+const transitionerContainer = '.transitioner-container';
+const scorebarContainer = '.scorebar-container';
+const screenRedemption = '.screen-redemption-question-selector';
+const redemptionButtonSelector = '.gradient-container';
+
+const firstLevelFeedback = '.first-level-feedback';
+const screenSummarySelector = '.screen-summary';
+
+const gameOverSelector = '.screen-game-over';
+const accuracyInfoSection = '.accuracy-info-section';
+const toSummarySelector = '.skip-summary';
 // TODO: }
 
 const browser = await puppeteer.launch({
@@ -133,7 +129,7 @@ const startQuizziz = async (name, roomCode, answers) => {
                 }
             }
 
-            const submitButton = await page.$('.submit-button');
+            const submitButton = await page.$(submitAnswerButton);
             if (submitButton) await submitButton.click();
         }
 
@@ -161,7 +157,15 @@ const startQuizziz = async (name, roomCode, answers) => {
             console.log('annoying powerup used');
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (await page.$(screenRedemption)) {
+            const button = await page.$(redemptionButtonSelector);
+            if (button) {
+                await button.click();
+            }
+            console.log('redemption question picked');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1200));
     }
 
 };

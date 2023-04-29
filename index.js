@@ -12,7 +12,12 @@ const option4 = 'options-4'
 const scorebarContainer = 'scorebar-container';
 const screenRedemption = 'screen-redemption-question-selector';
 const redemptionButtonChoice = 'gradient-container';
-const endScreen = 'accuracy-info-section';
+
+const gameOverSelector = 'screen-game-over';
+const firstLevelFeedback = 'first-level-feedback';
+const accuracyInfoSection = 'accuracy-info-section';
+const toSummarySelector = 'skip-summary';
+const screenSummarySelector = 'screen-summary';
 
 const shouldPowerup = 'apply-now';
 const continueButton = 'right-navigator';
@@ -91,34 +96,52 @@ const startQuizziz = async (name, roomCode, answers) => {
     while(true) {
         const questionSelector = '#questionText p';
 
-        await page.waitForSelector(questionSelector);
-        const question = await page.evaluate(() => {
-            let text = document.querySelector('#questionText p').innerText;
-            console.log(text);
-            return text ? text : '';
-        });
-        const card = await answers.find(card => card.question === question);
-        const answer =  await card ? card.answer : null;
-        await console.log(question);
-        await console.log(answer);
-
         await Promise.race([
+            page.waitForSelector(questionSelector, { timeout: 0 }),
             page.waitForSelector(powerupSelector, { timeout: 0 }),
             page.waitForSelector(leaderboardWrapper, { timeout: 0 }),
-            page.waitForSelector(endScreen, { timeout: 0 })
+            page.waitForSelector(gameOverSelector, { timeout: 0 }),
+            page.waitForSelector(screenSummarySelector, { timeout: 0 }),
+            page.waitForSelector(firstLevelFeedback, { timeout: 0 }),
         ]);
 
-        if(await page.$(endScreen)) {
+        if(await page.$(gameOverSelector)) {
             console.log('done')
             break;
         }
 
-        if (await page.$(powerupSelector)) {
-            const button = await page.$(shouldPowerup);
-            if (button) {
-                await button.click();
+        if(await page.$(accuracyInfoSection)) {
+            console.log('done')
+            break;
+        }
+
+        let question, answer;
+        if (await page.$(questionSelector)) {
+            question = await page.evaluate(() => {
+                const text = document.querySelector('#questionText p').innerText;
+                return text ? text : '';
+            });
+            const card = await answers.find(card => card.question === question);
+            answer =  await card ? card.answer : null;
+        }
+
+        await console.log(question);
+        let multipleAnswers = answer.split('\n').filter(str => str !== '');
+        console.log(multipleAnswers);
+
+        const options = await page.$$('div.option');
+        for (let i = 0; i < options.length; i++) {
+            const optionText = await options[i].$eval('div.resizeable p', el => el.innerText);
+            if ( multipleAnswers.includes(optionText) ) {
+                await options[i].click();
             }
         }
+
+        const submitButton = await page.$('.submit-button');
+        if (submitButton) await submitButton.click();
+
+        const usePowerUp = await page.$(shouldPowerup);
+        if (usePowerUp) await submitButton.click();
 
         if (await page.$(leaderboardWrapper)) {
             const button = await page.$(continueButton);
@@ -126,8 +149,14 @@ const startQuizziz = async (name, roomCode, answers) => {
                 await button.click();
             }
         }
-
+        await new Promise(resolve => setTimeout(resolve, 3000));
     }
+
+    if (await page.$(toSummarySelector)) {
+        const button = await page.$(toSummarySelector);
+        if (button) await button.click();
+    }
+
 };
 
 

@@ -48,9 +48,13 @@ async function extractAnswers(page) {
         const cards = document.querySelectorAll('div.rounded-xl');
 
         return Array.from(cards).map((card) => {
-            const question = card.querySelector('div.rounded-xl h5').innerText.trim();
-            const answer = card.querySelector('div.rounded-xl div')
-                .innerText.split('\n').filter(str => str !== '');
+            const question = card.querySelector('div.rounded-xl h5').innerText.trim()
+                .replace(/\n+/g, ' ')       // Заменяет символы перевода строки на пробел
+                .replace(/\s{2,}/g, ' ')    // Удаляет пробел, если встречается 2+ подряд
+                .replace(/\u00A0/g, ' ');   // Заменяет неразрывный пробел на обычный (внешне они не отличаются, но для js есть разница)
+            const answer = card.querySelector('div.rounded-xl div').innerText.trim()
+                .split('\n')
+                .filter(str => str !== '');
             return { question, answer };
         });
     });
@@ -126,42 +130,55 @@ async function extractTextFromElement(page, selector) {
     const children = await page.$$(selector + ' > *');
     const childTexts = await Promise.all(children.map(child => extractTextFromElement(page, selector + ' > ' + child.tagName)));
 
-    // Удаляет пробел, если встречается 2+ подряд
-    text = text + childTexts.join('').trim();
-    text = text.replace(/\s{2,}/g, ' ').trim();
+    text = text + childTexts.join('\n').trim();
+    text = text
+        .replace(/\s{2,}/g, ' ')    // Удаляет пробел, если встречается 2+ подряд
+        .replace(/\n+/g, " ")       // Заменяет символы перевода строки на пробел
+        .trim();
     return text;
 }
 
-async function clickOnCorrectAnswer(page, options, answers) {
+async function clickOnCorrectAnswer(page, answers) {
     const question = (await extractTextFromElement(page, questionSelector)).trim();
+
+    await page.waitForSelector('.option.is-mcq');
+    let options = await page.$$('.option.is-mcq');
     let found = false;
-    let index = 0;
 
-    while (!found) {
-        let array = answers.slice(-index);
-        index = array.findIndex(card => card.question === question);
+    console.log('Extracted question: ' + question);
 
-        if (index === -1) {
-            console.log('No answers found! Picking randomly');
-            const r = Math.floor(Math.random() * options.length);
-            await options[r].click();
-            console.log(`Clicked on ${r + 1} card`);
-            break;
-        }
+    for (let i = 0; i < answers.length; i++) {
+        const card = answers[i];
+        if (card.question !== question) continue;
 
-        const card = array.find((card, i) => i === index);
-
-        for (let i = 0; i < options.length; i++) {
+        for(let i = 0; i < options.length; i++) {
             const option = options[i];
-            const text = await option.$eval('.resizeable', el => el.textContent);
+            if (!option) return;
+            let text;
+            try {
+                text = await option.$eval('.textContainer', el => el.textContent.trim());
+            } catch(error) {
+                console.warn('Options with images not supported yet, picking randomly...')
+                const optionImage = await page.$('.option-image');
+                await optionImage.click();
+                return;
+            }
 
             if (card.answer.includes(text)) {
-                await option.click();
-                console.log(card.question + '\n' + card.answer);
                 found = true;
+                console.log(`Question = ${card.question}\n Answer = ${card.answer}`);
+                await option.click();
             }
         }
     }
+
+    if (!found) {
+        console.warn('No answer found! Picking randomly');
+        const r = Math.floor(Math.random() * options.length);
+        await options[r].click();
+        console.log(`Clicked on ${r + 1} card`);
+    }
+
     const button = await page.$(submitAnswerButton);
     if (button) await button.click();
 }
@@ -172,9 +189,7 @@ const initQuizzizBot = async (name, roomCode, answers) => {
 
     await configureQuizziz(page, name);
     await inputName(page, name);
-    await startGame(page);
-
-    console.log(answers);
+    // await startGame(page);
 
     while(true) {
 
@@ -191,18 +206,21 @@ const initQuizzizBot = async (name, roomCode, answers) => {
         }
 
         if (await page.$(questionSelector)) {
-            const options = await page.$$('div.option');
-            await clickOnCorrectAnswer(page, options, answers);
+            await clickOnCorrectAnswer(page, answers);
         }
 
         await handleAnnoyingPopups(page);
         await handleRedemptionQuestions(page);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
+
+    await page.waitForSelector(accuracyInfoSelector);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    // TODO: implement taking screenshots and fix viewport
 };
 
-let roomCode = '21153327';
-let name = '**';
+let roomCode = '512452';
+let name = 'asd';
 let answers = await getAnswersFromQuizit(roomCode);
 console.log(answers);
 await initQuizzizBot(name, roomCode, answers);

@@ -1,4 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer from 'puppeteer';
+import readline from 'readline'
 
 // quizziz selectors
 const leaderboardSelector = '.leaderboard-wrapper';
@@ -14,13 +15,11 @@ const levelFeedbackSelector = '.first-level-feedback';
 const toSummarySelector = '.skip-summary';
 const accuracyInfoSelector = '.accuracy-info-section';
 
-
 const questionSelector = '#questionText';
 
 const browser = await puppeteer.launch({
     headless: false,
-    defaultViewport:
-        {
+    defaultViewport: {
         height: 800,
         width: 1200
     }
@@ -141,9 +140,20 @@ async function extractTextFromElement(page, selector) {
 async function clickOnCorrectAnswer(page, answers) {
     const question = (await extractTextFromElement(page, questionSelector)).trim();
 
-    await page.waitForSelector('.option.is-mcq');
-    let options = await page.$$('.option.is-mcq');
+    await page.waitForSelector('.option');
+    let options = await page.$$('.option');
     let found = false;
+
+    if(probability < Math.random()) {
+        console.log('Choosing randomly because of defined probability');
+        const r = Math.floor(Math.random() * options.length);
+        await page.waitForSelector('.option');
+        await options[r].click();
+
+        const button = await page.$(submitAnswerButton);
+        if (button) await button.click();
+        return;
+    }
 
     console.log('Extracted question: ' + question);
 
@@ -176,19 +186,18 @@ async function clickOnCorrectAnswer(page, answers) {
         console.warn('No answer found! Picking randomly');
         const r = Math.floor(Math.random() * options.length);
         await options[r].click();
-        console.log(`Clicked on ${r + 1} card`);
     }
 
     const button = await page.$(submitAnswerButton);
     if (button) await button.click();
 }
 
-const initQuizzizBot = async (name, roomCode, answers) => {
+const initQuizizzBot = async (name, roomCode, answers, probability) => {
     const page = await browser.newPage();
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
 
-    await configureQuizziz(page, name);
-    await inputName(page, name);
+    await configureQuizziz(page);
+    // await inputName(page, name);
     // await startGame(page);
 
     while(true) {
@@ -206,7 +215,7 @@ const initQuizzizBot = async (name, roomCode, answers) => {
         }
 
         if (await page.$(questionSelector)) {
-            await clickOnCorrectAnswer(page, answers);
+            await clickOnCorrectAnswer(page, answers, probability);
         }
 
         await handleAnnoyingPopups(page);
@@ -216,11 +225,33 @@ const initQuizzizBot = async (name, roomCode, answers) => {
 
     await page.waitForSelector(accuracyInfoSelector);
     await new Promise(resolve => setTimeout(resolve, 2000));
-    // TODO: implement taking screenshots and fix viewport
+    const path = 'result.png'
+    await page.screenshot({ path });
+    console.log(`screenshot saved as: ${path}`)
+
 };
 
+const prompt = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+// Номер тестовой комнаты с рандомной викториной:
 let roomCode = '512452';
-let name = 'asd';
-let answers = await getAnswersFromQuizit(roomCode);
-console.log(answers);
-await initQuizzizBot(name, roomCode, answers);
+let name = '---';
+let probability = 0.8;
+
+prompt.question('Input room code (if you want to test this app: 512452): ', answer => {
+    roomCode = answer || '512452';
+    prompt.question('Input the probability of choosing correct answer (default: 0.8): ', answer => {
+        probability = answer || '0.8';
+        prompt.close();
+    });
+});
+
+prompt.on('close', async () => {
+    let answers = await getAnswersFromQuizit(roomCode);
+    console.log(answers);
+    await initQuizizzBot(name, roomCode, answers, probability);
+})
+

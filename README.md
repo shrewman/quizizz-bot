@@ -1,4 +1,4 @@
-# quizziz-bot
+# quizizz-bot
 
 - [Description](#description)
 - [Installation](#installation)
@@ -15,13 +15,13 @@ Solve your tests on quizziz with ease using Quizziz Bot. It's a Node.js applicat
 2. Clone the repository:
 
     ```
-    git clone https://github.com/feelswhiteman/quizziz-bot
+    git clone https://github.com/feelswhiteman/quizizz-bot
     ```
     
 3. Navigate to the folder with project:
 
     ```
-    cd quizziz-bot
+    cd quizizz-bot
     ```
     
 4. Install dependecies:

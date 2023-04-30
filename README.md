@@ -7,7 +7,7 @@
 
 ## Description
 
-Solve your tests on quizizz with ease using Quizizz Bot. It's a Node.js application that automates solving Quizziz tests. Built using the Puppeteer library, it is capable of extracting answers from [Quizit](quizit.online), and answering questions alongside with skipping all anoying dialogs to do work faster.
+Solve your tests on quizizz with ease using Quizizz Bot. It's a Node.js application that automates solving Quizziz tests. Built using the Puppeteer library, it is capable of extracting answers from [Quizit](https://quizit.online), and answering questions alongside with skipping all anoying dialogs to do work faster.
 
 ## Installation
 

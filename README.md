@@ -35,6 +35,8 @@ Solve your tests on quizizz with ease using Quizizz Bot. It's a Node.js applicat
     ```
     node index.js
     ```
+    
+or with your IDE such as Visual Studio Code or WebStorm
 
 ## Usage
 

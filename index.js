@@ -13,7 +13,6 @@ const redemptionQuestionButton = '.gradient-container';
 
 const levelFeedbackSelector = '.first-level-feedback';
 const toSummarySelector = '.skip-summary';
-const accuracyInfoSelector = '.accuracy-info-section';
 
 const browser = await puppeteer.launch({
     headless: false, // false,
@@ -26,7 +25,6 @@ const browser = await puppeteer.launch({
 // quizit selectors
 const quizitInputSelector = 'input[type="text"][placeholder="Pin or Link"]';
 const quizitGetAnswersButton = 'button[type="button"].bg-blue-500';
-const quizitCardSelector = 'div.rounded-xl';
 
 const getAnswersFromQuizit = async (roomCode) => {
     const page = await browser.newPage();
@@ -35,12 +33,15 @@ const getAnswersFromQuizit = async (roomCode) => {
     await page.type(quizitInputSelector, roomCode);
     await page.click(quizitGetAnswersButton);
 
-    await new Promise(r => setTimeout(r, 1000));
     const errorElement = await page.$('.bg-red-100');
     if (errorElement) {
         const errorMessage = await page.$eval('.text-gray-500', element => element.textContent);
         throw new Error(`Quizit error: ${errorMessage}`);
     }
+
+    console.log('Retrieving answers...')
+    await page.waitForSelector('.rounded-xl');
+    await new Promise(r => setTimeout(r, 5000));
 
     return await extractAnswers(page);
 };
@@ -62,11 +63,6 @@ async function extractAnswers(page) {
     });
 }
 
-async function inputName(page, name) {
-    await page.waitForSelector('.enter-name-field');
-    await page.type('.enter-name-field', name);
-}
-
 async function configureQuizziz(page) {
     await page.waitForSelector('.toggle-button');
     await page.evaluate(() => {
@@ -76,14 +72,6 @@ async function configureQuizziz(page) {
             button.click()
         });
     });
-}
-
-// TODO: fix
-async function startGame(page) {
-    await page.waitForNavigation();
-    await page.click('.start-game');
-    await page.waitForNavigation();
-    await page.click('.start-btn');
 }
 
 async function handleAnnoyingPopups(page) {
@@ -300,34 +288,48 @@ async function handleQuestions(page, answers, probability, timeOnQuestion) {
     }
 }
 
+async function startGame(page, name) {
+    await page.waitForSelector('.enter-name-field');
+    await page.type('.enter-name-field', name);
+
+    const button = await page.$('.start-game');
+    await button.click();
+}
+
 const initQuizizzBot = async (name, roomCode, answers, probability, timeOnQuestion) => {
     const page = await browser.newPage();
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
 
     await configureQuizziz(page);
-    await inputName(page, name);
-    await startGame(page);
+    await startGame(page, name);
+
+    if (roomCode.length === 8) {
+        await page.waitForSelector('.start-btn');
+        const startBtn = await page.$('.start-btn');
+        await startBtn.click();
+    }
 
     while (true) {
         await handleAnnoyingPopups(page);
         await handleRedemptionQuestions(page);
         await handleQuestions(page, answers, probability, timeOnQuestion);
 
-        if (await page.$(accuracyInfoSelector)) {
+        if (await page.$('.review-section')) {
             console.log('quiz done!')
             break;
         }
     }
 
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const path = 'result.png'
-    await page.screenshot({ path });
+    const now = new Date();
+    const path = `${now.getFullYear()}-${now.getMonth()}-${now.getDay()}_${now.getHours()}-${now.getMinutes()}_result.png`;
+    await page.screenshot({path});
     console.log(`Screenshot saved as: ${path}`);
     console.log('You can close your browser now.');
 };
 
-let roomCode = '49455519';
-let name = Math.random().toString();
+let roomCode = '';
+let name = '';
 let probability = 0.9;
 let timeOnQuestion = 10000;
 
@@ -354,12 +356,15 @@ const prompt = readline.createInterface({
 });
 
 prompt.question('Input room code: ', answer => {
-    roomCode = answer;
+    roomCode = answer.trim();
     prompt.question('Input the probability of choosing correct answer (default: 0.9): ', answer => {
-        probability = answer || '0.9';
+        probability = answer.trim() || '0.9';
         prompt.question('Input the estimated time spent on each question in seconds (default: 10): ', answer => {
-            timeOnQuestion = answer * 1000 || 10000;
-            prompt.close();
+            timeOnQuestion = answer.trim() * 1000 || 10000;
+            prompt.question('Input your name, that will be showed up in quiz: ', answer => {
+                name = answer;
+                prompt.close();
+            });
         });
     });
 });

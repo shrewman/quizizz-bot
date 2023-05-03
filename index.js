@@ -15,13 +15,11 @@ const levelFeedbackSelector = '.first-level-feedback';
 const toSummarySelector = '.skip-summary';
 const accuracyInfoSelector = '.accuracy-info-section';
 
-const questionSelector = '#questionText';
-
 const browser = await puppeteer.launch({
-    headless: false, // 'new',
+    headless: false, // false,
     defaultViewport: {
-        height: 800,
-        width: 1200
+        height: 1080,
+        width: 1920
     }
 });
 
@@ -37,7 +35,12 @@ const getAnswersFromQuizit = async (roomCode) => {
     await page.type(quizitInputSelector, roomCode);
     await page.click(quizitGetAnswersButton);
 
-    await page.waitForSelector(quizitCardSelector);
+    await new Promise(r => setTimeout(r, 1000));
+    const errorElement = await page.$('.bg-red-100');
+    if (errorElement) {
+        const errorMessage = await page.$eval('.text-gray-500', element => element.textContent);
+        throw new Error(`Quizit error: ${errorMessage}`);
+    }
 
     return await extractAnswers(page);
 };
@@ -75,17 +78,23 @@ async function configureQuizziz(page) {
     });
 }
 
+// TODO: fix
 async function startGame(page) {
-    const buttonSelector1 = '.start-game';
-    await page.waitForSelector(buttonSelector1);
-    await page.click(buttonSelector1);
+    await page.waitForNavigation();
+    await page.click('.start-game');
+    await page.waitForNavigation();
+    await page.click('.start-btn');
 }
 
 async function handleAnnoyingPopups(page) {
     if (await page.$(leaderboardSelector)) {
         const button = await page.$(continueButton);
         if (button) {
-            await button.click();
+            try {
+                await button.click();
+            } catch (e) {
+                console.log(e);
+            }
         }
         console.log('leaderboard skipped');
     }
@@ -93,7 +102,11 @@ async function handleAnnoyingPopups(page) {
     if (await page.$(powerupSelector)) {
         const button = await page.$(continueButton);
         if (button) {
-            await button.click();
+            try {
+                await button.click();
+            } catch (e) {
+                console.log(e);
+            }
         }
         console.log('powerup gaining skipped');
     }
@@ -101,9 +114,23 @@ async function handleAnnoyingPopups(page) {
     if (await page.$(usePowerupButton)) {
         const button = await page.$(usePowerupButton);
         if (button) {
-            await button.click();
+            try {
+                await button.click();
+            } catch (e) {
+                console.log(e);
+            }
         }
         console.log('annoying powerup used');
+    }
+
+    if (await page.$(levelFeedbackSelector)) {
+        const toSummary = await page.$(toSummarySelector);
+        try {
+            if (toSummary) await toSummary.click();
+        } catch (e) {
+            console.log(e);
+        }
+        console.log('skipped level feedback')
     }
 }
 
@@ -111,7 +138,11 @@ async function handleRedemptionQuestions(page) {
     if (await page.$(redemptionSelector)) {
         const button = await page.$(redemptionQuestionButton);
         if (button) {
-            await button.click();
+            try {
+                await button.click();
+            } catch (e) {
+                console.log(e);
+            }
         }
         console.log('redemption question picked');
     }
@@ -134,82 +165,139 @@ async function extractTextFromElement(page, selector) {
 }
 
 async function clickOnRandomAnswer(page) {
-    await page.waitForSelector('.option');
+    // await page.waitForSelector('.option');
     const options = await page.$$('.option');
     const r = Math.floor(Math.random() * options.length);
     try {
         await options[r].click();
     } catch (e) {
         console.log('Node detached from document, trying again...')
+        return;
     }
     console.log('Choosing randomly');
 
     const button = await page.$(submitAnswerButton);
-    if (button) await button.click();
+    try {
+        if (button) await button.click();
+    } catch (e) {
+        console.log(e);
+    }
 }
 
-// TODO: Refactor this function
-async function clickOnCorrectAnswer(page, answers) {
-    await page.waitForSelector('#questionText');
-    const question = (await extractTextFromElement(page, questionSelector)).trim();
-    console.log('Extracted question: ' + question);
-
-    if (await page.$('.typed-option-input')) {
-        const card = answers.find(card => card.question === question);
-        if (!card) return;
-        await page.type('.typed-option-input', card.answer[0]);
-        return;
-    }
-
+async function clickOnCorrectOptions(page, correctOptionIndexes) {
     const options = await page.$$('.option');
 
-    let optionsText;
-    try {
-        optionsText = await Promise.all(options.map(async (option) => {
-            return option.$eval('.textContainer', el => el.textContent.trim());
-        }));
-    } catch (error) {
-        console.warn('Options with images not supported yet, picking randomly...')
-        const optionImage = await page.$('.option-image');
-        try {
-            await optionImage.click();
-        } catch (e) {
-            console.log('Node detached from document, trying again...')
-        }
-        return;
+    if (!options) return;
+
+    if (correctOptionIndexes.length === 0) {
+        console.log('Answer not found.')
+        await clickOnRandomAnswer(page);
     }
 
+    try {
+        for (let index of correctOptionIndexes) {
+            await options[index].click();
+        }
+        const button = await page.$(submitAnswerButton);
+        if (button) await button.click();
+    } catch (e) {
+        console.log('Error: Node detached from the document.');
+    }
+}
+
+function getCorrectOptionIndexes(question, answers, optionsText) {
     let found = false;
+    let correctOptionIndexes = [];
     for (let i = 0; i < answers.length; i++) {
         const card = answers[i];
         if (card.question !== question) continue;
 
-        await page.waitForSelector('.option');
-        const options = await page.$$('.option');
-        const answerIndex = optionsText.findIndex(text => card.answer.includes(text));
-
-        if (answerIndex >= 0) {
-            try {
-                await options[answerIndex].click();
-                console.log('Answer found: ' + optionsText[answerIndex]);
-            } catch (error) {
-                console.log('Node detached from document, trying again...')
-                return;
-            }
+        const optionIndex = optionsText.findIndex(text => card.answer.includes(text));
+        if (optionIndex >= 0) {
+            correctOptionIndexes.push(optionIndex);
+            console.log('Answer found: ' + optionsText[optionIndex]);
             found = true;
         }
     }
+    return correctOptionIndexes;
+}
 
-    if (!found) {
-        console.warn('No answer found! Picking randomly');
+async function getOptionsContent(page) {
+    // await page.waitForSelector('.option');
+    const options = await page.$$('.option');
+    if (!options) return;
+
+    return await Promise.all(options.map(async (option) => {
+        return option.$eval('.textContainer', el => el.textContent.trim());
+    }));
+}
+
+async function handleMultipleChoiceQuestion(page, question, answers, probability) {
+    if (probability < Math.random()) {
         await clickOnRandomAnswer(page);
     }
 
-    const button = await page.$(submitAnswerButton);
-    if (button) await button.click();
+    const optionsContent = await getOptionsContent(page);
+    const correctOptionIndexes = getCorrectOptionIndexes(question, answers, optionsContent);
+    await clickOnCorrectOptions(page, correctOptionIndexes);
 }
 
-async function inputAnswerAndSubmit(answers, page) {
+async function handleInputAnswerQuestion(page, question, answers, probability) {
+    const textArea = await page.$('.typed-option-input');
+    if (!textArea) return;
+
+    if (probability < Math.random()) {
+        textArea.type('.');
+        console.log('Sending "." in textarea due to defined probability.');
+    } else {
+        const card = answers.find(card => card.question === question);
+        if (card) {
+            await textArea.type(card.answer[0]);
+            console.log('Answer found: ' + card.answer);
+        } else {
+            textArea.type('.');
+            console.log('Answer not found. Sending "."');
+        }
+    }
+
+    try {
+        const button = await page.$(submitAnswerButton);
+        if (button) await button.click();
+    } catch (e) {
+        console.log('Error: Node detached from the document.');
+    }
+
+}
+
+async function handleOptionImage(page) {
+    console.warn('Options with images not supported yet, picking randomly...')
+    const optionImage = await page.$('.option-image');
+    try {
+        await optionImage.click();
+    } catch (e) {
+        console.log('Error: Node detached from document.')
+    }
+}
+
+async function handleQuestions(page, answers, probability, timeOnQuestion) {
+    if (!await page.$('#questionText')) return;
+
+    await new Promise(r => setTimeout(r, timeOnQuestion));
+
+    const question = await extractTextFromElement(page, '#questionText');
+    console.log('Extracted question: ' + question);
+
+    const multipleChoice = await page.$('.option');
+    const optionInput = await page.$('.typed-option-input');
+    const optionImage = await page.$('.option-image');
+
+    if (multipleChoice) {
+        await handleMultipleChoiceQuestion(page, question, answers, probability);
+    } else if (optionInput) {
+        await handleInputAnswerQuestion(page, question, answers, probability);
+    } else if (optionImage) {
+        await handleOptionImage(page);
+    }
 }
 
 const initQuizizzBot = async (name, roomCode, answers, probability, timeOnQuestion) => {
@@ -217,54 +305,30 @@ const initQuizizzBot = async (name, roomCode, answers, probability, timeOnQuesti
     await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
 
     await configureQuizziz(page);
-    // await inputName(page, name);
-    // await startGame(page);
+    await inputName(page, name);
+    await startGame(page);
 
     while (true) {
-
         await handleAnnoyingPopups(page);
         await handleRedemptionQuestions(page);
-
-        if (await page.$('.option')) {
-            if (probability >= Math.random() || await page.$('.typed-option-input')) {
-                await clickOnCorrectAnswer(page, answers);
-            } else {
-                await clickOnRandomAnswer(page);
-            }
-        }
-
-        if (await page.$(levelFeedbackSelector)) {
-            const toSummary = await page.$(toSummarySelector);
-            if (toSummary) await toSummary.click();
-            console.log('skipped level feedback')
-            break;
-        }
+        await handleQuestions(page, answers, probability, timeOnQuestion);
 
         if (await page.$(accuracyInfoSelector)) {
             console.log('quiz done!')
             break;
         }
-
-        await new Promise(resolve => setTimeout(resolve, timeOnQuestion));
     }
 
-    await page.waitForSelector(accuracyInfoSelector);
     await new Promise(resolve => setTimeout(resolve, 2000));
     const path = 'result.png'
-    await page.screenshot({path});
+    await page.screenshot({ path });
     console.log(`Screenshot saved as: ${path}`);
     console.log('You can close your browser now.');
 };
 
-const prompt = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-// Номер тестовой комнаты с рандомной викториной:
-let roomCode;
+let roomCode = '49455519';
 let name = Math.random().toString();
-let probability = 0.8;
+let probability = 0.9;
 let timeOnQuestion = 10000;
 
 console.log(
@@ -278,16 +342,21 @@ console.log(
     "or contact me on Telegram: @FeelsWhiteMan" +
     "\n\n" +
     "Before running app on your school quiz it's recommended to test it on some random quiz on the internet to " +
-    "see if it's working as expected.\n" +
+    "see if it works as expected.\n" +
     "Set up live quiz such as this using your quizizz account: \n" +
     "https://quizizz.com/admin/quiz/5d0715fb518bb8001aae027d/english-challenge?fromSearch=true&source=null\n" +
     "and pass room code into this app.\n"
 );
 
+const prompt = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
 prompt.question('Input room code: ', answer => {
     roomCode = answer;
-    prompt.question('Input the probability of choosing correct answer (default: 0.8): ', answer => {
-        probability = answer || '0.8';
+    prompt.question('Input the probability of choosing correct answer (default: 0.9): ', answer => {
+        probability = answer || '0.9';
         prompt.question('Input the estimated time spent on each question in seconds (default: 10): ', answer => {
             timeOnQuestion = answer * 1000 || 10000;
             prompt.close();
@@ -296,8 +365,8 @@ prompt.question('Input room code: ', answer => {
 });
 
 prompt.on('close', async () => {
-let answers = await getAnswersFromQuizit(roomCode);
-console.log(answers);
-await initQuizizzBot(name, roomCode, answers, probability, timeOnQuestion);
-})
+    let answers = await getAnswersFromQuizit(roomCode);
+    console.log(answers);
+    await initQuizizzBot(name, roomCode, answers, probability, timeOnQuestion);
+});
 

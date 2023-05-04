@@ -17,8 +17,8 @@ const toSummarySelector = '.skip-summary';
 const browser = await puppeteer.launch({
     headless: false, // false,
     defaultViewport: {
-        height: 1080,
-        width: 1920
+        height: 1000,
+        width: 1400,
     }
 });
 
@@ -225,9 +225,15 @@ async function handleMultipleChoiceQuestion(page, question, answers, probability
         await clickOnRandomAnswer(page);
     }
 
-    const optionsContent = await getOptionsContent(page);
-    const correctOptionIndexes = getCorrectOptionIndexes(question, answers, optionsContent);
-    await clickOnCorrectOptions(page, correctOptionIndexes);
+    try {
+        const optionsContent = await getOptionsContent(page);
+        const correctOptionIndexes = getCorrectOptionIndexes(question, answers, optionsContent);
+        await clickOnCorrectOptions(page, correctOptionIndexes);
+    } catch (e) {
+        console.log('Something went wrong:');
+        console.log(e);
+        await clickOnRandomAnswer(page);
+    }
 }
 
 async function handleInputAnswerQuestion(page, question, answers, probability) {

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Quizizz Bot</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="grid-container">
+    <h1>Quizizz Bot</h1>
+    <div class="start-container">
+      <input type="text" id="room-code-input" placeholder="Enter room code">
+      <button class="button" id="get-answers-btn">Get answers</button>
+    </div class="button-container">
+
+    <div class="quiz-container">
+      <label for="name-input">Name: </label>
+      <input type="text" id="name-input" placeholder="Enter your name">
+      <label for="probability-input">Probability: </label>
+      <input type="text" id="probability-input" placeholder="Enter probability (0.0 - 1.0)">
+      <label for="time-input">Time on question (s): </label>
+      <input type="text" id="time-input" placeholder="Time to spend on each question">
+      <button class="button" id="start-quiz-btn" disabled>Start quiz</button>
+    </div>
+
+    <div class="answers-container">
+      <h2>Your answers</h2>
+      <table id="question-answer-table">
+        <tr>
+          <th>Question</th>
+          <th>Answer</th>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+
+</html>

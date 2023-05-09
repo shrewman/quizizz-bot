@@ -1,0 +1,99 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  margin: auto;
+  max-width: 40rem;
+}
+
+.grid-container {
+  align-items: center;
+  display: grid;
+  grid-gap: 10px;
+}
+
+h1 {
+  grid-column: 1 / span 2;
+  text-align: center;
+}
+
+table {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+th, td {
+  text-align: left;
+  white-space: pre-line;
+  padding: 8px;
+}
+
+th {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+tr:hover {
+  background-color: #ddd;
+}
+
+.start-container {
+  grid-column: 1;
+  display: grid;
+  justify-content: center;
+  align-items: center; 
+}
+
+.quiz-container {
+  grid-column: 2;
+}
+
+.answers-container {
+  grid-column: 1 / span 2;
+}
+
+.button {
+  margin-bottom: 10px;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+input, button {
+  font-size: 16px;
+  padding: 5px 10px;
+  width: 250px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+input {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#get-answers-btn {
+  background-color: #3b82f6;
+}
+
+#start-quiz-btn {
+  background-color: #471b42;
+}
+
+.button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quiz-container {
+  display: grid;
+  justify-content: center;
+  align-items: center; 
+}

@@ -23,28 +23,37 @@ const browser = await puppeteer.launch({
 });
 
 // quizit selectors
-const quizitInputSelector = 'input[type="text"][placeholder="Pin or Link"]';
-const quizitGetAnswersButton = 'button[type="button"].bg-blue-500';
+const quizitInputSelector =
+  'input[type="text"][placeholder="Enter game pin or link"]';
+// const quizitGetAnswersButton = 'button[type="submit"].to-blue-700';
+const quizitGetAnswersButtonSelector =
+  "div.flex.justify-center.items-center.flex-col.mx-auto.gap-5 > button";
+const quizitAnswerCardSelector = ".question-box";
 
-const getAnswersFromQuizit = async (roomCode) => {
+const getAnswersFromCheatNetwork = async (roomCode) => {
   const page = await browser.newPage();
-  await page.goto("https://quizit.online/services/quizizz/");
+  await page.goto("https://cheatnetwork.eu/login");
+
+  console.log("Log in with Discord before proceeding");
+
+  await page.waitForSelector(
+    'span[style="animation:gradient 1.5s ease-in-out forwards;"]',
+    { timeout: 0 },
+  );
+
+  await page.goto("https://cheatnetwork.eu/services/quizizz");
+
+  await page.waitForSelector(quizitInputSelector);
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   await page.type(quizitInputSelector, roomCode);
-  await page.click(quizitGetAnswersButton);
-
-  const errorElement = await page.$(".bg-red-100");
-  if (errorElement) {
-    const errorMessage = await page.$eval(
-      ".text-gray-500",
-      (element) => element.textContent,
-    );
-    throw new Error(`Quizit error: ${errorMessage}`);
-  }
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await page.click(quizitGetAnswersButtonSelector);
 
   console.log("Retrieving answers...");
-  await page.waitForSelector(".rounded-xl");
-  await new Promise((r) => setTimeout(r, 5000));
+  await page.waitForSelector(quizitAnswerCardSelector, { timeout: 0 });
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log("Answers retrieved");
 
   return await extractAnswers(page);
 };
@@ -415,7 +424,7 @@ prompt.question("Input room code: ", (answer) => {
 });
 
 prompt.on("close", async () => {
-  let answers = await getAnswersFromQuizit(roomCode);
+  let answers = await getAnswersFromCheatNetwork(roomCode);
   console.log(answers);
   await initQuizizzBot(name, roomCode, answers, probability, timeOnQuestion);
 });

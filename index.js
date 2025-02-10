@@ -23,12 +23,12 @@ const browser = await puppeteer.launch({
 });
 
 // quizit selectors
-const quizitInputSelector =
+var quizitInputSelector =
   'input[type="text"][placeholder="Enter game pin or link"]';
 // const quizitGetAnswersButton = 'button[type="submit"].to-blue-700';
-const quizitGetAnswersButtonSelector =
+var quizitGetAnswersButtonSelector =
   "div.flex.justify-center.items-center.flex-col.mx-auto.gap-5 > button";
-const quizitAnswerCardSelector = ".question-box";
+var quizitAnswerCardSelector = ".question-box";
 
 const getAnswersFromCheatNetwork = async (roomCode) => {
   const page = await browser.newPage();
@@ -55,23 +55,26 @@ const getAnswersFromCheatNetwork = async (roomCode) => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
   console.log("Answers retrieved");
 
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
   return await extractAnswers(page);
 };
 
 async function extractAnswers(page) {
   return await page.evaluate(async () => {
-    const cards = document.querySelectorAll("div.rounded-xl");
+    const cards = document.querySelectorAll(".question-box");
+    console.log(cards);
 
     return Array.from(cards).map((card) => {
       const question = card
-        .querySelector("div.rounded-xl h5")
-        .innerText.trim()
+        .querySelector("p > strong")
+        ?.innerText.trim()
         .replace(/\n+/g, " ") // Заменяет символы перевода строки на пробел
         .replace(/\s{2,}/g, " ") // Удаляет пробел, если встречается 2+ подряд
         .replace(/\u00A0/g, " "); // Заменяет неразрывный пробел на обычный (внешне они не отличаются, но для js есть разница)
       const answer = card
-        .querySelector("div.rounded-xl div")
-        .innerText.trim()
+        .querySelector("ul > li > span")
+        ?.innerText.trim()
         .split("\n")
         .filter((str) => str !== "");
       return { question, answer };

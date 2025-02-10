@@ -22,13 +22,12 @@ const browser = await puppeteer.launch({
   },
 });
 
-// quizit selectors
-var quizitInputSelector =
+// cheatnetwork selectors
+var cnInputSelector =
   'input[type="text"][placeholder="Enter game pin or link"]';
-// const quizitGetAnswersButton = 'button[type="submit"].to-blue-700';
-var quizitGetAnswersButtonSelector =
+var cnGetAnswersButtonSelector =
   "div.flex.justify-center.items-center.flex-col.mx-auto.gap-5 > button";
-var quizitAnswerCardSelector = ".question-box";
+var cnAnswerCardSelector = ".question-box";
 
 const getAnswersFromCheatNetwork = async (roomCode) => {
   const page = await browser.newPage();
@@ -43,15 +42,15 @@ const getAnswersFromCheatNetwork = async (roomCode) => {
 
   await page.goto("https://cheatnetwork.eu/services/quizizz");
 
-  await page.waitForSelector(quizitInputSelector);
+  await page.waitForSelector(cnInputSelector);
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  await page.type(quizitInputSelector, roomCode);
+  await page.type(cnInputSelector, roomCode);
   await new Promise((resolve) => setTimeout(resolve, 500));
-  await page.click(quizitGetAnswersButtonSelector);
+  await page.click(cnGetAnswersButtonSelector);
 
   console.log("Retrieving answers...");
-  await page.waitForSelector(quizitAnswerCardSelector, { timeout: 0 });
+  await page.waitForSelector(cnAnswerCardSelector, { timeout: 0 });
   await new Promise((resolve) => setTimeout(resolve, 2000));
   console.log("Answers retrieved");
 

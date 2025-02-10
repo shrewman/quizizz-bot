@@ -376,8 +376,8 @@ console.log(
     "to imitate person who can make mistakes. " +
     "After test ends it automatically screenshots page with results and saves image in current directory.\n" +
     "If this app not working as expected or crashes feel free to create issue on project's page:\n" +
-    "https://github.com/feelswhiteman/quizizz-bot\n" +
-    "or contact me on Telegram: @FeelsWhiteMan" +
+    "https://github.com/shrewman/quizizz-bot\n" +
+    "or contact me on Telegram: @shrewman" +
     "\n\n" +
     "Before running app on your school quiz it's recommended to test it on some random quiz on the internet to " +
     "see if it works as expected.\n" +

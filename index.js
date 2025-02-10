@@ -65,12 +65,22 @@ async function extractAnswers(page) {
     console.log(cards);
 
     return Array.from(cards).map((card) => {
-      const question = card
+      let question = card
         .querySelector("p > strong")
         ?.innerText.trim()
-        .replace(/\n+/g, " ") // Заменяет символы перевода строки на пробел
-        .replace(/\s{2,}/g, " ") // Удаляет пробел, если встречается 2+ подряд
-        .replace(/\u00A0/g, " "); // Заменяет неразрывный пробел на обычный (внешне они не отличаются, но для js есть разница)
+        .replace(/\n+/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\u00A0/g, " ");
+
+      if (!question) {
+        question = card
+          .querySelector("p")
+          ?.innerText.trim()
+          .replace(/\n+/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .replace(/\u00A0/g, " ");
+      }
+
       const answer = card
         .querySelector("ul > li > span")
         ?.innerText.trim()

@@ -6,7 +6,7 @@ const leaderboardSelector = ".leaderboard-wrapper";
 const powerupSelector = ".powerup-award-container";
 const usePowerupButton = ".apply-now";
 const continueButton = ".right-navigator";
-const submitAnswerButton = ".submit-button";
+const submitAnswerButton = 'button[aria-label="Submit"]';
 
 const redemptionSelector = ".screen-redemption-question-selector";
 const redemptionQuestionButton = ".gradient-container";
@@ -83,10 +83,10 @@ async function extractAnswers(page) {
 
 async function configureQuizziz(page) {
   await page.waitForSelector(".toggle-button");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   await page.evaluate(() => {
-    const buttons = document
-      .querySelector(".game-settings-list")
-      .querySelectorAll(".toggle-button");
+    const buttons = document.querySelectorAll('button[aria-checked="true"]');
     buttons.forEach((button) => {
       button.click();
     });
@@ -242,7 +242,9 @@ async function getOptionsContent(page) {
 
   return await Promise.all(
     options.map(async (option) => {
-      return option.$eval(".textContainer", (el) => el.textContent.trim());
+      return option.$eval(".text-container > div > p", (el) =>
+        el.textContent.trim(),
+      );
     }),
   );
 }
@@ -347,8 +349,15 @@ const initQuizizzBot = async (
   const page = await browser.newPage();
   await page.goto(`https://quizizz.com/join?gc=${roomCode}`);
 
+  console.log("goto successfully");
+
   await configureQuizziz(page);
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  console.log("configured successfully");
+
   await startGame(page, name);
+  console.log("started game successfully");
 
   if (roomCode.length === 8) {
     await page.waitForSelector(".start-btn");
